@@ -10,6 +10,13 @@ import org.bson.types.ObjectId
 data class UserData(
     @BsonId val userId : String ,//google id
     val userName : String,
+    val userChats : List<ChatInfo> = emptyList()
+)
+@Serializable
+data class ChatInfo(
+    @BsonId val chatId : String,
+    val sender : String,
+    val receiver : String
 )
 
 @Serializable

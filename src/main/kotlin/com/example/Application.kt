@@ -1,6 +1,7 @@
 package com.example
 import com.example.RoomControler.PushNotification
 import com.example.RoomControler.RoomController
+import com.example.data.ChatInfo
 import com.example.data.UserData
 import com.example.data.UserMessage
 import com.example.data.database.DatabaseServiceImp
@@ -48,10 +49,15 @@ fun Application.module() {
     GlobalScope.launch {
 //        dataSource.insertUser(
 //            UserData(
-//            userId = "8UDX0ydCIsYohnnSqrwd5oM74232",
-//            userName = "Harpreet Singh.8052"
-//        )
-//        )
+//            userId = "Nayan",
+//            userName = "Nayan"
+//        ))
+        //Test insertcaht detail
+//        dataSource.insertChatDetail(ChatInfo(
+//            chatId = "NayanNayan",
+//            sender = "Nayan",
+//            receiver = "Nayan"
+//        ))
 
        // callInsertTest(inset)
 //       val data =  dataSource.getAllMessageById("12")

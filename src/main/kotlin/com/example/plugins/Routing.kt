@@ -4,10 +4,7 @@ import com.example.RoomControler.PushNotification
 import com.example.RoomControler.RoomController
 import com.example.data.database.DatabaseServiceImp
 import com.example.data.remote.OneSignalServiceImp
-import com.example.routes.chatSocket
-import com.example.routes.getAllMessageById
-import com.example.routes.saveUserDetailToDatabase
-import com.example.routes.sendNotification
+import com.example.routes.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -29,5 +26,7 @@ fun Application.configureRouting(
         getAllMessageById(roomController)
         saveUserDetailToDatabase(databaseServiceImp)
         sendNotification(serviceNotify)
+        searchUserByUserName(databaseServiceImp)
+        insertUserChatDetails(databaseServiceImp)
     }
 }

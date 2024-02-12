@@ -3,6 +3,7 @@ package com.example.routes
 import com.example.RoomControler.PushNotification
 import com.example.RoomControler.RoomController
 import com.example.callInsertTest
+import com.example.data.ChatInfo
 import com.example.data.Chats
 import com.example.data.UserData
 import com.example.data.UserMessage
@@ -26,6 +27,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -85,6 +87,11 @@ fun Route.chatSocket(roomController: RoomController , notification: PushNotifica
 }
 
 suspend fun checkOnlineOrOffline(roomController: RoomController, userMessage: UserMessage , notification: PushNotification) {
+
+    //#testing
+    roomController.member.forEach {
+        println("MemberInHash : ${it.value.id} -> ${it.value.userName}")
+    }
 
     if (roomController.checkOnlineStatus(userMessage)) {
         //online
@@ -150,6 +157,72 @@ fun Route.saveUserDetailToDatabase(databaseService: DatabaseServiceImp) {
         }
     }
 }
+
+fun  Route.searchUserByUserName(databaseService: DatabaseServiceImp){
+   get("search-user") {
+       val userName = call.parameters["userName"] ?: return@get call.respondText(
+           "Missing provide  \"userName\" to search",
+           status = HttpStatusCode.BadRequest
+       )
+       val list = databaseService.findUserByName(userName)
+       println("SearchedUser -> ${userName} ${list}")
+       if (list.isEmpty()) call.respond(HttpStatusCode.OK , "No User Exist With That Name")
+
+      // list.map { UserData(it.userId, it.userName) }
+       val result : MutableList<UserData> = mutableListOf()
+       list.forEach {
+           val id = it.userId
+           val name = it.userName
+           result.add(UserData(userId = id, userName = name))
+
+       }
+
+
+       call.respond(HttpStatusCode.OK, Json.encodeToString(result))
+      // call.respond(HttpStatusCode.OK, Json.encodeToJsonElement(result))
+      // call.respond(HttpStatusCode.OK,result)
+
+   }
+}
+
+fun Route.insertUserChatDetails(databaseService: DatabaseServiceImp)
+{
+    post("save-chats") {
+//        val parameters = call.receiveParameters()
+//        val sender = parameters["sender"]
+//        val receiver = parameters["receiver"]
+        val sender = call.parameters["sender"]
+        val receiver = call.parameters["receiver"]
+
+        if (sender.isNullOrBlank())
+        {
+            call.respond(HttpStatusCode.BadRequest ,"sender is missing")
+        }
+        if (receiver.isNullOrBlank())
+        {
+            call.respond(HttpStatusCode.BadRequest ,"receiver is missing")
+        }
+        try {
+            if (sender != null && receiver != null)
+            {
+                val chatId = "${sender}${receiver}"
+                databaseService.insertChatDetail(
+                    ChatInfo(
+                    chatId = chatId,
+                    sender = sender,
+                    receiver = receiver
+                    )
+                )
+                call.respond(HttpStatusCode.OK)
+            }
+        }catch (e : Exception)
+        {
+            call.respond(HttpStatusCode.InternalServerError ,e.message.toString())
+        }
+
+    }
+}
+
 
 
 
