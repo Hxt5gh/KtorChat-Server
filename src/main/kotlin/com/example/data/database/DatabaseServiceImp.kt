@@ -1,19 +1,18 @@
 package com.example.data.database
 
-import com.example.data.ChatInfo
-import com.example.data.Chats
-import com.example.data.UserData
-import com.example.data.UserMessage
+import com.example.data.*
 import com.example.data.exceptions.MemberNotExistException
 import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Filters.lt
+import com.mongodb.client.model.FindOneAndReplaceOptions
+import com.mongodb.client.model.UpdateOptions
 import com.mongodb.client.model.Updates
 import org.bson.Document
 import org.bson.types.ObjectId
-import org.litote.kmongo.MongoOperator
-import org.litote.kmongo.addToSet
+import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.CoroutineDatabase
-import org.litote.kmongo.eq
-import org.litote.kmongo.regex
+import org.litote.kmongo.coroutine.insertOne
 
 class DatabaseServiceImp(db : CoroutineDatabase) : DatabaseService {
 
@@ -21,24 +20,59 @@ class DatabaseServiceImp(db : CoroutineDatabase) : DatabaseService {
 
     val messageCollection = db.getCollection<Chats>()
 
+    val chatDetailCollection = db.getCollection<ChatInfo>()
+
     override suspend fun insertUser(user: UserData) {
-       userCollection.insertOne(user)
+        userCollection.findOneAndReplace(
+            filter = eq("_id", user.userId),
+            replacement = user,
+            options = FindOneAndReplaceOptions().upsert(true)
+        )
     }
 
-    override suspend fun insertChatDetail(chatDetail: ChatInfo) {
-        val chatExists = userCollection.countDocuments(
-            Document("_id", chatDetail.sender)
-                .append("userChats.chatId", chatDetail.chatId)
-        ) > 0
-//        if (!chatExists) {
-//            val updateDocument = Document("\$push", Document("userChats", chatDetail))
-//            userCollection.updateOne(Document("_id", chatDetail.sender), updateDocument)
-//        }
-        if (!chatExists) {
-            val updateDocument = Document("\$addToSet", Document("userChats", chatDetail))
-            userCollection.updateOne(Document("_id", chatDetail.sender), updateDocument)
-        }
+    override suspend fun insertChatDetail(chatDetail: ChatDetail) {
 
+        val chatDetails = ChatInfo(
+            userId = chatDetail.sender,
+            chatList = listOf(chatDetail)
+        )
+        val existingInfo = chatDetailCollection.findOne(ChatInfo::userId eq chatDetail.sender)
+        if (existingInfo != null){
+            //exist
+            val chatExist = chatDetailCollection.findOne(Document("chatList._id" ,"${chatDetail.chatId}"))
+            if (chatExist != null){
+                //chat detail exist want to update
+                println("chatDetail -> chat detail exist want to update")
+                val updatedChatList = existingInfo.chatList.map { detail ->
+                    if (detail.chatId == chatDetail.chatId) {
+                        detail.copy(
+                            sender = chatDetail.sender,
+                            receiver = chatDetail.receiver,
+                            receiverPic = chatDetail.receiverPic,
+                            receiverName = chatDetail.receiverName,
+                            lastMessage = chatDetail.lastMessage, // Example update
+                            timeStamp = chatDetail.timeStamp // Example update
+                        )
+                    } else {
+                        detail // Keep other elements unchanged
+                    }
+                }
+
+                val updatedChatInfo = existingInfo.copy(chatList = updatedChatList)
+                chatDetailCollection.save(updatedChatInfo)
+
+            }else
+            {
+                //chat not exist add inside array
+                println("chatDetail -> chat not exist add inside array")
+                val updatedChatDetail = existingInfo.copy(chatList = existingInfo.chatList +chatDetail)
+                chatDetailCollection.save(updatedChatDetail)
+            }
+
+        }else {
+            //not exist create
+            chatDetailCollection.insertOne(chatDetails)
+        }
     }
 
 
@@ -87,9 +121,9 @@ class DatabaseServiceImp(db : CoroutineDatabase) : DatabaseService {
         return matchingUsers
     }
 
-
-
-
+    override suspend fun getUserUChatWith(userId : String): ChatInfo? {
+        return chatDetailCollection.findOne(ChatInfo::userId eq userId)
+    }
 
 
     suspend fun insertMessageOptimized(message: UserMessage) {

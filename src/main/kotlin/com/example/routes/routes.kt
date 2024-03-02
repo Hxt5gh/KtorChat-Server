@@ -3,10 +3,7 @@ package com.example.routes
 import com.example.RoomControler.PushNotification
 import com.example.RoomControler.RoomController
 import com.example.callInsertTest
-import com.example.data.ChatInfo
-import com.example.data.Chats
-import com.example.data.UserData
-import com.example.data.UserMessage
+import com.example.data.*
 import com.example.data.database.DatabaseServiceImp
 import com.example.data.exceptions.MemberAlreadyExistException
 import com.example.data.exceptions.MemberNotExistException
@@ -33,10 +30,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timerTask
 
-fun Route.chatSocket(roomController: RoomController , notification: PushNotification){
-
-        val messageQueue = Channel<UserMessage>()
-
+fun Route.chatSocket(roomController: RoomController , notification: PushNotification ,databaseService: DatabaseServiceImp){
 
     webSocket("/chat-socket"){
         val session = call.sessions.get<MySession>()
@@ -64,8 +58,23 @@ fun Route.chatSocket(roomController: RoomController , notification: PushNotifica
                 {
                     // Convert the received JSON string to a UserMessage object
                     val userMessage = Json.decodeFromString<UserMessage>(frame.readText())
-                   // messageQueue.send(userMessage)  // into queue
+
+                    //saving message detail to databse
+                   val detailChatData = ChatDetail(
+                       chatId = "${userMessage.senderId}${userMessage.recipientId}",
+                       sender = userMessage.senderId,
+                       receiver = userMessage.recipientId,
+                       receiverName = roomController.getUserById(userMessage.recipientId).displayName,
+                       receiverPic = roomController.getUserById(userMessage.recipientId).profileUri,
+                       lastMessage = userMessage.message,
+                       timeStamp =userMessage.timeStamp
+                   )
+
+                    databaseService.insertChatDetail(detailChatData)
+
                     checkOnlineOrOffline(roomController , userMessage , notification)
+                }
+                else if (frame is Frame.Binary){
 
                 }
             }
@@ -95,11 +104,13 @@ suspend fun checkOnlineOrOffline(roomController: RoomController, userMessage: Us
 
     if (roomController.checkOnlineStatus(userMessage)) {
         //online
+        println("debugstatus -> ${userMessage}")
         roomController.saveMessageInDb(userMessage) //save into db
         roomController.sendMessage(userMessage)
     }else
     {
         //offline
+        println("debugstatus -> ${userMessage}")
         roomController.saveMessageInDb(userMessage) //save into db
         notification.sendNotification(userMessage)
         println("Notification Send")
@@ -122,6 +133,8 @@ fun Route.getAllMessageById(roomController: RoomController) {
         // Retrieve the value of the 'id' parameter from the query string
         val chatId = call.parameters["id"]
 
+        println("getMessage -> ${chatId}")
+
         // Check if the 'id' parameter is present
         if (!chatId.isNullOrBlank()) {
             // Call the function to get messages for the specified ID
@@ -129,10 +142,36 @@ fun Route.getAllMessageById(roomController: RoomController) {
 
             // Respond with the messages
            // call.respond(HttpStatusCode.OK, Json.encodeToString(messages))
-            call.respond(HttpStatusCode.OK, Json.encodeToJsonElement(Chats.serializer(),messages!!))
+            if (messages != null){
+            call.respond(HttpStatusCode.OK, Json.encodeToJsonElement(Chats.serializer(),messages))
+            }
+            else
+            {
+                call.respond(HttpStatusCode.OK, emptyList<Chats>())
+            }
         } else {
             // If 'id' parameter is missing, respond with an error
             call.respondText("Missing 'id' parameter", status = HttpStatusCode.BadRequest)
+        }
+    }
+}
+
+fun Route.getUserById(roomController: RoomController) {
+    get("/get-user") {
+        // Retrieve the value of the 'userid' parameter from the query string
+        val userId = call.parameters["userid"]
+
+        // Check if the 'userId' parameter is present
+        if (!userId.isNullOrBlank()) {
+            // Call the function to get user for the specified userId
+            val user = roomController.getUserById(userId)
+
+            // Respond with the messages
+            // call.respond(HttpStatusCode.OK, Json.encodeToString(messages))
+            call.respond(HttpStatusCode.OK, Json.encodeToJsonElement(UserData.serializer(),user))
+        } else {
+            // If 'id' parameter is missing, respond with an error
+            call.respondText("Missing 'userID' parameter", status = HttpStatusCode.BadRequest)
         }
     }
 }
@@ -172,8 +211,10 @@ fun  Route.searchUserByUserName(databaseService: DatabaseServiceImp){
        val result : MutableList<UserData> = mutableListOf()
        list.forEach {
            val id = it.userId
-           val name = it.userName
-           result.add(UserData(userId = id, userName = name))
+           val usersName = it.userName
+           val displayName = it.displayName
+           val imageUrl = it.profileUri
+           result.add(UserData(userId = id, userName = usersName , displayName =  displayName , profileUri = imageUrl))
 
        }
 
@@ -185,44 +226,45 @@ fun  Route.searchUserByUserName(databaseService: DatabaseServiceImp){
    }
 }
 
-fun Route.insertUserChatDetails(databaseService: DatabaseServiceImp)
-{
+fun Route.insertUserChatDetails(databaseService: DatabaseServiceImp) {
     post("save-chats") {
-//        val parameters = call.receiveParameters()
-//        val sender = parameters["sender"]
-//        val receiver = parameters["receiver"]
-        val sender = call.parameters["sender"]
-        val receiver = call.parameters["receiver"]
 
-        if (sender.isNullOrBlank())
+        val data = call.receive<ChatDetail>()
+
+        if (data != null){
+            databaseService.insertChatDetail(data)
+            call.respond(HttpStatusCode.OK ,"Saved")
+
+        }else
         {
-            call.respond(HttpStatusCode.BadRequest ,"sender is missing")
-        }
-        if (receiver.isNullOrBlank())
-        {
-            call.respond(HttpStatusCode.BadRequest ,"receiver is missing")
-        }
-        try {
-            if (sender != null && receiver != null)
-            {
-                val chatId = "${sender}${receiver}"
-                databaseService.insertChatDetail(
-                    ChatInfo(
-                    chatId = chatId,
-                    sender = sender,
-                    receiver = receiver
-                    )
-                )
-                call.respond(HttpStatusCode.OK)
-            }
-        }catch (e : Exception)
-        {
-            call.respond(HttpStatusCode.InternalServerError ,e.message.toString())
+            call.respond(HttpStatusCode.BadRequest ,"Body missing")
         }
 
     }
 }
 
+
+fun Route.getUserYouHaveChatWith(databaseService: DatabaseServiceImp){
+    get("/get-chat-with") {
+        // Retrieve the value of the 'userid' parameter from the query string
+        val userId = call.parameters["userid"]
+
+        // Check if the 'userId' parameter is present
+        if (!userId.isNullOrBlank()) {
+            // Call the function to get chat detail for the specified userId
+            val userChat = databaseService.getUserUChatWith(userId)
+
+            if (userChat == null){
+                call.respondText("No Chat detail Exist with that 'userID'", status = HttpStatusCode.BadRequest)
+            }
+            // Respond with the messages
+            call.respond(HttpStatusCode.OK, Json.encodeToJsonElement(ChatInfo.serializer() , userChat!!))
+        } else {
+            // If 'id' parameter is missing, respond with an error
+            call.respondText("Missing 'userID' parameter", status = HttpStatusCode.BadRequest)
+        }
+    }
+}
 
 
 
@@ -257,5 +299,6 @@ fun Route.sendNotification(oneSignalService: OneSignalService){
         }
     }
 }
+
 
 

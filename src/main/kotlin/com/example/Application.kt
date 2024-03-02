@@ -47,10 +47,13 @@ fun Application.module() {
 
 
     GlobalScope.launch {
+
 //        dataSource.insertUser(
 //            UserData(
-//            userId = "Nayan",
-//            userName = "Nayan"
+//            userId = "james",
+//            userName = "james",
+//            displayName = "JD2",
+//            profileUri = "some uri"
 //        ))
         //Test insertcaht detail
 //        dataSource.insertChatDetail(ChatInfo(

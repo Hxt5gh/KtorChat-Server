@@ -22,11 +22,13 @@ fun Application.configureRouting(
             call.respond("Working")
         }
 
-        chatSocket(roomController, notification)
+        chatSocket(roomController, notification , databaseServiceImp)
         getAllMessageById(roomController)
         saveUserDetailToDatabase(databaseServiceImp)
         sendNotification(serviceNotify)
         searchUserByUserName(databaseServiceImp)
         insertUserChatDetails(databaseServiceImp)
+        getUserById(roomController)
+        getUserYouHaveChatWith(databaseServiceImp)
     }
 }
