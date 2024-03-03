@@ -1,17 +1,19 @@
 package com.example.RoomControler
-import com.example.data.Chats
-import com.example.data.Member
-import com.example.data.UserData
-import com.example.data.UserMessage
+import com.example.data.*
 import com.example.data.database.DatabaseServiceImp
 import com.example.data.exceptions.MemberAlreadyExistException
 import io.ktor.websocket.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
 import org.litote.kmongo.json
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 
 
 /*here we added user to the map that are online users
@@ -22,6 +24,8 @@ class RoomController(
 ) {
 
     val member = ConcurrentHashMap<String, Member>()
+
+    val roomPeer = ConcurrentLinkedQueue<PeerRoom>()
 
     fun onJoin(
         userId : String, //id
@@ -91,5 +95,35 @@ class RoomController(
         }
         return false
     }
+
+
+
+    suspend fun addPeer(user : PeerRoom)
+    {
+        roomPeer.offer(PeerRoom(userId = user.userId , sessionId = user.sessionId , socket = user.socket))
+        CoroutineScope(Dispatchers.Default).launch {
+            removePeer(user)
+        }
+    }
+    private suspend fun removePeer(user: PeerRoom) {
+        println("new remove start size ${roomPeer.size}")
+        delay(5000L) // Delay for  seconds
+        roomPeer.remove(user)
+        println("new remove agter 5 size ${roomPeer.size}")
+    }
+    suspend fun getPeer() : PeerRoom
+    {
+       val otherUserId = roomPeer.poll()
+       return otherUserId
+    }
+
+    fun isHas(user : PeerRoom) : Boolean {
+        return roomPeer.any { it.userId == user.userId }
+    }
+
+
+
+
 }
+
 

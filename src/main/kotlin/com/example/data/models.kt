@@ -38,6 +38,17 @@ data class Member(
     val sessionId : String,
     val socket : WebSocketSession
 )
+@Serializable
+data class PeerRoom(
+    val userId: String,
+    val sessionId : String,
+    val socket : WebSocketSession
+)
+@Serializable
+data class PeerRes(
+    val userId: String,
+    val userId2: String = "Noting",
+)
 
 
 @Serializable

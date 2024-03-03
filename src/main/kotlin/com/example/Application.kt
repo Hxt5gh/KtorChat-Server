@@ -73,7 +73,7 @@ fun Application.module() {
     configureSockets()
     configureSerialization()
     configureMonitoring()
-    configureSecurity()
+    configureSecurity(roomController)
     configureRouting(roomController , dataSource , serviceNotify , notification)
 }
 

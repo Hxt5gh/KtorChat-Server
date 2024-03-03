@@ -30,5 +30,6 @@ fun Application.configureRouting(
         insertUserChatDetails(databaseServiceImp)
         getUserById(roomController)
         getUserYouHaveChatWith(databaseServiceImp)
+        findRandomPeer(roomController)
     }
 }

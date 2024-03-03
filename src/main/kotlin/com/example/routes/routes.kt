@@ -22,6 +22,8 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
@@ -266,7 +268,75 @@ fun Route.getUserYouHaveChatWith(databaseService: DatabaseServiceImp){
     }
 }
 
+fun Route.findRandomPeer(roomController: RoomController){
+   webSocket("/get-peer") {
+       val session = call.sessions.get<MySession>()
+       println("new peer size ${roomController.roomPeer.size} with session ${session?.userId}  ${session?.sessionId}")
+       if (session == null)
+       {
+           close(CloseReason(CloseReason.Codes.VIOLATED_POLICY , "NO session"))
+           return@webSocket
+       }
+       try {
+           if (roomController.roomPeer.isEmpty())
+           {
+               println("new peer ${session.userId}")
+               roomController.addPeer(
+                   PeerRoom(
+                       userId = session.userId,
+                       sessionId = session.sessionId,
+                       socket = this
+                   )
+               )
+               val msg = Json.encodeToString(PeerRes("waiting for match ${roomController.roomPeer.size}"))
+               this.send(msg)
+              
+           }
+           else
+           {
+               if (!roomController.isHas(
+                       PeerRoom(
+                           userId = session.userId,
+                           sessionId = session.sessionId,
+                           socket = this
+                       )
+                   )
+               ) {
 
+                   //user exist waiting for peer
+                   val firstPeer = roomController.getPeer()
+                   //send to first
+                   val msgOne = Json.encodeToString(PeerRes(session.userId))
+                   firstPeer.socket.send(msgOne)
+
+
+                   //send to second
+                   val msgTwo = Json.encodeToString(PeerRes(firstPeer.userId))
+                   this.send(msgTwo)
+               }else
+               {
+                   return@webSocket
+                   this.close()
+               }
+
+           }
+
+           incoming.consumeEach { frame ->
+               if(frame is Frame.Text)
+               {
+               }
+           }
+       }catch(e : MemberAlreadyExistException){
+           call.respond(HttpStatusCode.Conflict , e.message.toString())
+       }catch (e : MemberNotExistException){
+           call.respond(HttpStatusCode.NotFound , e.message.toString())
+       }catch (e : Exception){
+           println(e.printStackTrace())
+       }finally {
+            this.close()
+       }
+   }
+}
 
 //Testing
 fun Route.sendNotification(oneSignalService: OneSignalService){
