@@ -11,5 +11,6 @@ interface DatabaseService {
     suspend fun getAllMessageById(chatId : String) : Chats?
     suspend fun findUserByName(userName : String) : List<UserData>
     suspend fun getUserUChatWith(userId : String) : ChatInfo?
+    suspend fun deleteChatById(userId: String ,chatId: String) : Boolean
 
 }

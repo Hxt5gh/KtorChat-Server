@@ -71,8 +71,18 @@ fun Route.chatSocket(roomController: RoomController , notification: PushNotifica
                        lastMessage = userMessage.message,
                        timeStamp =userMessage.timeStamp
                    )
-
                     databaseService.insertChatDetail(detailChatData)
+
+                    val detailChatData2 = ChatDetail(
+                        chatId = "${userMessage.recipientId}${userMessage.senderId}",
+                        sender = userMessage.recipientId,
+                        receiver = userMessage.senderId,
+                        receiverName = roomController.getUserById(userMessage.senderId).displayName,
+                        receiverPic = roomController.getUserById(userMessage.senderId).profileUri,
+                        lastMessage = userMessage.message,
+                        timeStamp =userMessage.timeStamp
+                    )
+                    databaseService.insertChatDetail(detailChatData2)
 
                     checkOnlineOrOffline(roomController , userMessage , notification)
                 }
@@ -288,8 +298,8 @@ fun Route.findRandomPeer(roomController: RoomController){
                        socket = this
                    )
                )
-               val msg = Json.encodeToString(PeerRes("waiting for match ${roomController.roomPeer.size}"))
-               this.send(msg)
+//               val msg = Json.encodeToString(PeerRes("waiting for match ${roomController.roomPeer.size}"))
+//               this.send(msg)
               
            }
            else
@@ -337,6 +347,21 @@ fun Route.findRandomPeer(roomController: RoomController){
        }
    }
 }
+
+fun Route.deleteChatWithChatId(databaseService: DatabaseServiceImp){
+    get("delete-chat") {
+        val userId = call.parameters["userId"] ?: return@get call.respondText( "userId is missing" ,status = HttpStatusCode.BadRequest)
+        val chatId = call.parameters["chatId"] ?: return@get call.respondText("chatId is missing",status = HttpStatusCode.BadRequest)
+
+        if (chatId != null && userId != null){
+            if (databaseService.deleteChatById(userId , chatId))
+                 call.respond(HttpStatusCode.OK, message = "deleted")
+            else
+                call.respond(HttpStatusCode.NotFound , "not exist")
+        }
+    }
+}
+
 
 //Testing
 fun Route.sendNotification(oneSignalService: OneSignalService){

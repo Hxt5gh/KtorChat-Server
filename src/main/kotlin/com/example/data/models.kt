@@ -16,8 +16,8 @@ data class UserData(
 )
 @Serializable
 data class ChatInfo(
-    @BsonId val userId : String ,//google id
-    val chatList : List<ChatDetail> = emptyList()
+    @BsonId val userId : String,//google id
+    var chatList : List<ChatDetail> = emptyList()
 
 )
 @Serializable

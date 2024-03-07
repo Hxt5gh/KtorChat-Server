@@ -67,6 +67,15 @@ fun Application.module() {
 //        println(data.toString())
 //        val data = dataSource.getUserById("Ldu9N8DTIjfUApMlLUhuwzxZszt1")
 //        println("User by id ->   ${data.userId} ${data.userName}")
+
+        //delete chatid
+//        val r =  dataSource.deleteChatById("X" , "XJ")
+//        if (r){
+//            println("chatwith chat id X  and XA is delete")
+//        }else
+//        {
+//            println("chatwith chat id X  and XA not  delete")
+//        }
     }
 
 

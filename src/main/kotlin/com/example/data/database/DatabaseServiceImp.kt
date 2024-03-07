@@ -125,6 +125,21 @@ class DatabaseServiceImp(db : CoroutineDatabase) : DatabaseService {
         return chatDetailCollection.findOne(ChatInfo::userId eq userId)
     }
 
+    override suspend fun deleteChatById(userId: String , chatId: String) : Boolean{
+        var chats = chatDetailCollection.findOne(ChatInfo::userId eq userId)
+        if (chats != null) {
+            val chatList = chats.chatList
+            val filteredChatList = chatList.filterNot { chatDetail -> chatDetail.chatId == chatId }
+            chats.chatList = filteredChatList
+            chatDetailCollection.save(chats)
+
+            //deleting chat also
+            messageCollection.findOneAndDelete(Chats::chatId eq chatId)
+            return true
+        }
+        return false
+    }
+
 
     suspend fun insertMessageOptimized(message: UserMessage) {
         // Create the chat ID by combining sender and receiver IDs
