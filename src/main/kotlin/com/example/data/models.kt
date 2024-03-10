@@ -67,3 +67,19 @@ data class Chats(
     val message: List<UserMessage>
 )
 
+@Serializable
+data class RtcObject(
+    val type: String,
+    val sender: String? = null,
+    val target: String? = null,
+    val sdp: String? = null,
+    val offer: HashMap<String, String>? = null,
+    val iceCandidateModel: IceCandidateModel? = null
+)
+
+@Serializable
+data class IceCandidateModel(
+    val sdpMid:String ? = null,
+    val sdpMLineIndex:Double  ? = null,
+    val sdpCandidate:String ? = null
+)

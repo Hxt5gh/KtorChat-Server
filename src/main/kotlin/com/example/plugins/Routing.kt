@@ -32,5 +32,6 @@ fun Application.configureRouting(
         getUserYouHaveChatWith(databaseServiceImp)
         findRandomPeer(roomController)
         deleteChatWithChatId(databaseServiceImp)
+        findRtcPeer(roomController)
     }
 }

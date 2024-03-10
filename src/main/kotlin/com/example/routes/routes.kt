@@ -362,7 +362,101 @@ fun Route.deleteChatWithChatId(databaseService: DatabaseServiceImp){
     }
 }
 
+fun Route.findRtcPeer(roomController: RoomController){
+    webSocket("/get-rtc-peer") {
+        val session = call.sessions.get<MySession>()
+//        println("new peer size ${roomController.callQueue.size} hash ${roomController.callMember.size} with session ${session?.userId}  ${session?.sessionId}")
+        if (session == null)
+        {
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY , "NO session"))
+            return@webSocket
+        }
+        try {
+            //adding user to hash
+            roomController.addMemberToHash(PeerRoom(userId = session.userId , sessionId = session.sessionId , socket = this))
+            println("RTCDEBUG  -> member in hash : ${roomController.callMember.size}")
+            roomController.callMember.forEach { t, u ->
+                println("RTCDEBUG  -> member in hash : ${t} ${u}")
+            }
 
+            incoming.consumeEach { frame ->
+                if(frame is Frame.Text)
+                {
+                    val message = Json.decodeFromString<RtcObject>(frame.readText())
+
+                    println("rtcdebug ${message}")
+                    when(message.type){
+                        "type_offer" ->{
+                            if (roomController.callQueue.isEmpty()) {
+                                roomController.addMemberToQueue(message)
+                            } else {
+
+                                //member exist get member from the queue
+
+                                //getting member from hash
+                                val firstMember = roomController.getMemberFromQueue()
+                                val offerToSecond = Json.encodeToString(
+                                    RtcObject(
+                                        type = firstMember!!.type,
+                                        sender = firstMember.sender, //who sending offer
+                                        target = session.userId,
+                                        sdp = firstMember.sdp,
+                                        offer = firstMember.offer
+                                    )
+                                )
+
+
+                                //sending offer to second  client (by passsing first's sdp)
+                                roomController.callMember[message.sender]?.socket?.send(offerToSecond)
+
+                                /*
+                                val offerToFirst = Json.encodeToString(
+                                    RtcObject(
+                                        type = message.type,
+                                        sender = message.sender, //who sending offer
+                                        target = firstMember.sender,
+                                        sdp = message.sdp,
+                                        offer = message.offer
+                                    )
+                                )
+                                println("RTCDEBUG sending to first ${offerToFirst}")
+                                //also sending offer to first (by passing current client's)
+                                roomController.callMember[firstMember.sender]?.socket?.send(offerToFirst)
+                                */
+
+                            }
+                        }
+                        "type_answer" ->{
+                            //getting answer from second user and sending back to user one
+                            val answer = Json.encodeToString(
+                                RtcObject(
+                                    type = message.type, //answer from clint side
+                                    sender = message.sender, //who sending offer
+                                    target = message.target, //to send
+                                    sdp = message.sdp,
+                                    offer = message.offer
+                                )
+                            )
+                            roomController.callMember[message.target]?.socket?.send(answer)
+                        }
+                        "ice_candidate" ->{
+                        }
+                    }
+                }
+            }
+        }catch(e : MemberAlreadyExistException){
+            call.respond(HttpStatusCode.Conflict , e.message.toString())
+        }catch (e : MemberNotExistException){
+            call.respond(HttpStatusCode.NotFound , e.message.toString())
+        }catch (e : Exception){
+            println(e.printStackTrace())
+        }finally {
+            roomController.callMember.remove(session.userId)
+            this.close()
+
+        }
+    }
+}
 //Testing
 fun Route.sendNotification(oneSignalService: OneSignalService){
     post("/sendNotification") {
@@ -394,6 +488,3 @@ fun Route.sendNotification(oneSignalService: OneSignalService){
         }
     }
 }
-
-
-

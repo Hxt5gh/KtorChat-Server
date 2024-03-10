@@ -123,7 +123,37 @@ class RoomController(
 
 
 
+    //video methods
+    val callMember = ConcurrentHashMap<String, PeerRoom>()
+    val callQueue = ConcurrentLinkedQueue<RtcObject>()
+    fun addMemberToHash(info : PeerRoom){
+        //adding to hash
+        if (callMember.containsKey(info.userId)){
+            throw MemberAlreadyExistException()
+        }else
+        {
+            callMember[info.userId] = info
+        }
+    }
+    fun addMemberToQueue(member : RtcObject){
+        //adding to queue
+        callQueue.add(member)
+        CoroutineScope(Dispatchers.Default).launch {
+            delay(5000)
+            callQueue.remove(member)
+        }
+    }
+    fun getMemberFromQueue(): RtcObject? {
+        val otherUserId = callQueue.poll()
+        return otherUserId
+    }
+    fun removeMember()
+    {
 
+    }
+    fun hasMember(){
+
+    }
 }
 
 
