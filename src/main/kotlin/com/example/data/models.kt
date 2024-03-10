@@ -80,6 +80,6 @@ data class RtcObject(
 @Serializable
 data class IceCandidateModel(
     val sdpMid:String ? = null,
-    val sdpMLineIndex:Double  ? = null,
+    val sdpMLineIndex:Int  ? = null,
     val sdpCandidate:String ? = null
 )

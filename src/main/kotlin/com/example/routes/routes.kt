@@ -401,7 +401,8 @@ fun Route.findRtcPeer(roomController: RoomController){
                                         sender = firstMember.sender, //who sending offer
                                         target = session.userId,
                                         sdp = firstMember.sdp,
-                                        offer = firstMember.offer
+                                        offer = firstMember.offer,
+                                        iceCandidateModel = firstMember.iceCandidateModel
                                     )
                                 )
 
